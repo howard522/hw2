@@ -4,6 +4,7 @@ void main() {
   runApp(const MyApp());
 }
 
+/// 1) 最上層App
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -11,19 +12,21 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: TodoListScreen(),
+      home: const TodoListScreen(),
     );
   }
 }
 
+/// 2) 主畫面 (Stateful)
 class TodoListScreen extends StatefulWidget {
-  TodoListScreen({super.key});
+  const TodoListScreen({super.key});
 
   @override
   _TodoListScreenState createState() => _TodoListScreenState();
 }
 
 class _TodoListScreenState extends State<TodoListScreen> {
+  // 分類清單
   final List<String> categories = [
     "所有",
     "工作",
@@ -36,7 +39,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
     "其他",
   ];
 
-  // 每個 Todo 多了 "deadline" 欄位
+  // 代辦事項（示例用）
   final List<Map<String, dynamic>> _todos = [
     {
       "title": "完成報告",
@@ -66,35 +69,38 @@ class _TodoListScreenState extends State<TodoListScreen> {
       "title": "買衣服",
       "category": "購物",
       "isCompleted": false,
-      "deadline": DateTime.now().add(const Duration(days: 3)), // 今天
+      "deadline": DateTime.now().add(const Duration(days: 3)), // 未來
     },
     {
       "title": "買電腦",
       "category": "購物",
       "isCompleted": false,
-      "deadline": DateTime.now().add(const Duration(days: 3)), // 今天
+      "deadline": DateTime.now().add(const Duration(days: 3)), // 未來
     },
-    // 你也可以加入更多測試資料
   ];
 
+  // 文字輸入控制
   final TextEditingController _todoController = TextEditingController();
+
+  // 當前選取的分類
   String _selectedCategory = "所有";
 
-  // 底部導覽列當前選擇的索引
-  int _selectedIndex = 0;
+  // BottomNavigationBar 當前選取的索引 (0-based)
+  // 預設選到索引 1 => 「任務」
+  int _selectedIndex = 1;
 
-  // 三個區段的收合狀態
-  bool _showPast = true; // 以前的
-  bool _showToday = true; // 今天
-  bool _showFuture = true; // 未來
+  // 三個區段(以前的/今天/未來)是否收合
+  bool _showPast = true;
+  bool _showToday = true;
+  bool _showFuture = true;
 
-  // 產生新增 Todo 的對話框
+  // 新增代辦事項對話框
   void _addTodoDialog() {
     DateTime? _selectedDeadline;
     showDialog(
       context: context,
       builder: (context) {
-        String tempCategory = categories[0];
+        String tempCategory = categories[0]; // 對話框內的暫存分類
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
@@ -103,11 +109,13 @@ class _TodoListScreenState extends State<TodoListScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // 輸入文字
                     TextField(
                       controller: _todoController,
                       decoration: const InputDecoration(hintText: "輸入代辦事項"),
                     ),
                     const SizedBox(height: 10),
+                    // 選擇分類
                     DropdownButton<String>(
                       value: tempCategory,
                       items:
@@ -124,7 +132,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                       },
                     ),
                     const SizedBox(height: 10),
-                    // 選擇截止日期
+                    // 選截止日期
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -132,7 +140,9 @@ class _TodoListScreenState extends State<TodoListScreen> {
                         Text(
                           _selectedDeadline == null
                               ? "未選擇"
-                              : "${_selectedDeadline!.year}-${_selectedDeadline!.month.toString().padLeft(2, '0')}-${_selectedDeadline!.day.toString().padLeft(2, '0')}",
+                              : "${_selectedDeadline!.year}"
+                                  "-${_selectedDeadline!.month.toString().padLeft(2, '0')}"
+                                  "-${_selectedDeadline!.day.toString().padLeft(2, '0')}",
                         ),
                         IconButton(
                           icon: const Icon(Icons.calendar_today),
@@ -190,61 +200,47 @@ class _TodoListScreenState extends State<TodoListScreen> {
     setState(() {
       _selectedIndex = index;
     });
-    // 這裡可以根據 index 來切換頁面或做其他邏輯
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // 先依照當前選擇的分類做篩選 (若 _selectedCategory == "所有" 就不篩選)
-    final filteredTodos =
-        _selectedCategory == "所有"
-            ? _todos
-            : _todos
-                .where((todo) => todo["category"] == _selectedCategory)
-                .toList();
-
-    // 接著依照當前日期做分組
+  // 生成代辦清單
+  Widget buildTodoList(List<Map<String, dynamic>> todos) {
     final now = DateTime.now();
-    // 只要比較「日期」部分 (忽略時、分、秒)
     final today = DateTime(now.year, now.month, now.day);
 
-    // 用三個清單分別存放「以前的、今天、未來」
-    List<Map<String, dynamic>> pastTodos = [];
-    List<Map<String, dynamic>> todayTodos = [];
-    List<Map<String, dynamic>> futureTodos = [];
+    return Column(
+      children:
+          todos.map((todo) {
+            // 只顯示 "MM-DD"
+            String deadlineText = "無";
+            // 若過去日期 => 紅色
+            Color dateColor = Colors.black;
 
-    for (var todo in filteredTodos) {
-      final deadline = todo["deadline"];
-      // 如果沒設定 deadline，就直接歸類到「未來」(你也可以改成其它邏輯)
-      if (deadline == null) {
-        futureTodos.add(todo);
-      } else {
-        final d = DateTime(deadline.year, deadline.month, deadline.day);
-        if (d.isBefore(today)) {
-          pastTodos.add(todo);
-        } else if (d.isAtSameMomentAs(today)) {
-          todayTodos.add(todo);
-        } else {
-          futureTodos.add(todo);
-        }
-      }
-    }
+            final deadline = todo["deadline"] as DateTime?;
+            if (deadline != null) {
+              deadlineText =
+                  "${deadline.month.toString().padLeft(2, '0')}-${deadline.day.toString().padLeft(2, '0')}";
 
-    // 建立一個用於顯示 "List<Map<String, dynamic>>" 的小型 widget
-    Widget buildTodoList(List<Map<String, dynamic>> todos) {
-      return Column(
-        children:
-            todos.map((todo) {
-              // 顯示 deadline (若為 null 則顯示「無」)
-              String deadlineText = "無";
-              if (todo["deadline"] != null) {
-                final d = todo["deadline"] as DateTime;
-                deadlineText =
-                    "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+              final compareDate = DateTime(
+                deadline.year,
+                deadline.month,
+                deadline.day,
+              );
+              if (compareDate.isBefore(today)) {
+                dateColor = Colors.red;
               }
+            }
 
-              return ListTile(
+            return Container(
+              // 在每個 ListTile 外包一層 Container
+              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              decoration: BoxDecoration(
+                color: Color.fromRGBO(245, 248, 248, 1), // 淺灰背景
+                borderRadius: BorderRadius.circular(8), // 圓角
+              ),
+              child: ListTile(
+                // 圓形 Checkbox
                 leading: Checkbox(
+                  shape: const CircleBorder(),
                   value: todo["isCompleted"],
                   onChanged: (value) {
                     setState(() {
@@ -259,7 +255,10 @@ class _TodoListScreenState extends State<TodoListScreen> {
                         todo["isCompleted"] ? TextDecoration.lineThrough : null,
                   ),
                 ),
-                subtitle: Text("${todo["category"]} | 截止：$deadlineText"),
+                subtitle: Text(
+                  deadlineText,
+                  style: TextStyle(color: dateColor),
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.flag),
                   onPressed: () {
@@ -268,48 +267,75 @@ class _TodoListScreenState extends State<TodoListScreen> {
                     });
                   },
                 ),
-              );
-            }).toList(),
-      );
-    }
+              ),
+            );
+          }).toList(),
+    );
+  }
 
-    // 做三個小區塊：以前的 / 今天 / 未來
-    // 用一個 Row + IconButton(或 GestureDetector) 來做「箭頭收合 / 展開」
-    Widget buildCollapsibleSection({
-      required String title,
-      required bool isExpanded,
-      required VoidCallback onTap,
-      required List<Map<String, dynamic>> data,
-    }) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 標題列 + 箭頭
-          GestureDetector(
-            onTap: onTap,
-            child: Row(
-              children: [
-                Icon(
-                  // 如果目前是展開，就用 arrow_drop_down，否則用 arrow_right
-                  isExpanded ? Icons.arrow_drop_down : Icons.arrow_right,
-                ),
-                Text(title, style: const TextStyle(fontSize: 16)),
-              ],
-            ),
+  // 生成收合區塊 (以前的 / 今天 / 未來)
+  Widget buildCollapsibleSection({
+    required String title,
+    required bool isExpanded,
+    required VoidCallback onTap,
+    required List<Map<String, dynamic>> data,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 抬頭 + 箭頭 (左)
+        GestureDetector(
+          onTap: onTap,
+          child: Row(
+            children: [
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 4),
+              Icon(isExpanded ? Icons.arrow_drop_up : Icons.arrow_right),
+            ],
           ),
-          // 若 isExpanded = true，則顯示清單；否則不顯示
-          if (isExpanded) buildTodoList(data),
-          // 分隔
-          const Divider(),
-        ],
-      );
+        ),
+        // 若展開 => 顯示清單
+        if (isExpanded) buildTodoList(data),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 依據 _selectedCategory 做篩選
+    final filteredTodos =
+        _selectedCategory == "所有"
+            ? _todos
+            : _todos
+                .where((todo) => todo["category"] == _selectedCategory)
+                .toList();
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // 分三類
+    List<Map<String, dynamic>> pastTodos = [];
+    List<Map<String, dynamic>> todayTodos = [];
+    List<Map<String, dynamic>> futureTodos = [];
+
+    for (var todo in filteredTodos) {
+      final deadline = todo["deadline"] as DateTime?;
+      if (deadline == null) {
+        futureTodos.add(todo);
+      } else {
+        final d = DateTime(deadline.year, deadline.month, deadline.day);
+        if (d.isBefore(today)) {
+          pastTodos.add(todo);
+        } else if (d.isAtSameMomentAs(today)) {
+          todayTodos.add(todo);
+        } else {
+          futureTodos.add(todo);
+        }
+      }
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("To-Do List"),
-        backgroundColor: Colors.blueAccent,
-      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -329,18 +355,17 @@ class _TodoListScreenState extends State<TodoListScreen> {
                           });
                         },
                         child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 5),
+                          margin: const EdgeInsets.symmetric(horizontal: 10),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 15,
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.blueAccent),
                             color:
                                 _selectedCategory == category
-                                    ? Colors.blueAccent
-                                    : Colors.white,
+                                    ? Color.fromRGBO(140, 181, 245, 1)
+                                    : Color.fromRGBO(226, 238, 254, 1),
                           ),
                           child: Center(
                             child: Text(
@@ -362,7 +387,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
           ),
           const SizedBox(height: 10),
 
-          // 使用 SingleChildScrollView + Column 來容納三個收合區塊
+          // 三個收合區塊
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -404,26 +429,53 @@ class _TodoListScreenState extends State<TodoListScreen> {
         ],
       ),
 
-      // 浮動按鈕
+      // 浮動按鈕 (圓形)
       floatingActionButton: FloatingActionButton(
+        shape: const CircleBorder(),
+        backgroundColor: Colors.blueAccent,
         onPressed: _addTodoDialog,
         child: const Icon(Icons.add),
-        backgroundColor: Colors.blueAccent,
       ),
 
-      // 底部導覽列
+      // 底部導覽列 (帶有紅點 + 預設選到第二個)
       bottomNavigationBar: BottomNavigationBar(
+        // 讓未選中的 label 也顯示
         type: BottomNavigationBarType.fixed,
+        // 選中的 icon/label 顯示的顏色 (此處設定為藍色)
+        selectedItemColor: Colors.blue,
+        // 未選中的 icon/label 顯示的顏色 (灰色)
+        unselectedItemColor: Colors.grey,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.menu), label: "三條線"),
-          BottomNavigationBarItem(icon: Icon(Icons.check_box), label: "任務"),
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month),
-            label: "日曆",
+            // 用 Stack 疊加「漢堡 icon + 左上紅點」
+            icon: Stack(
+              children: [
+                const Icon(Icons.menu),
+                Positioned(
+                  top: 0,
+                  left: 18,
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // 若不想要文字，可將 label 改為空字串: label: '',
+            label: '',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "我的"),
+          BottomNavigationBarItem(icon: const Icon(Icons.article), label: '任務'),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.calendar_month),
+            label: '日曆',
+          ),
+          BottomNavigationBarItem(icon: const Icon(Icons.person), label: '我的'),
         ],
       ),
     );
