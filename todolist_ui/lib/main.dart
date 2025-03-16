@@ -282,8 +282,10 @@ class _TodoListScreenState extends State<TodoListScreen> {
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      
       children: [
         // 抬頭 + 箭頭 (左)
+        const SizedBox(height: 8),
         GestureDetector(
           onTap: onTap,
           child: Row(
@@ -295,7 +297,9 @@ class _TodoListScreenState extends State<TodoListScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 8),
         // 若展開 => 顯示清單
+
         if (isExpanded) buildTodoList(data),
       ],
     );
@@ -358,7 +362,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                           margin: const EdgeInsets.symmetric(horizontal: 10),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 15,
-                            vertical: 8,
+                            vertical: 6,
                           ),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(20),
@@ -375,7 +379,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                                 color:
                                     _selectedCategory == category
                                         ? Colors.white
-                                        : Colors.blueAccent,
+                                        : Color.fromRGBO(154, 163, 175, 1),
                               ),
                             ),
                           ),
